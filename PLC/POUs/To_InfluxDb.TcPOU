@@ -4,7 +4,7 @@
     <Declaration><![CDATA[FUNCTION_BLOCK To_InfluxDb
 
 VAR_INPUT
-	bExecute: BOOL;		// Start logging when high.
+	bExecute: BOOL;		// Start logging when high. 
 	tInterval: TIME;	// How often to log.
 	sHostName: STRING;	// Ip-adress to Db
 	nHostPort: UINT; // Influxdb is at 8086 default 

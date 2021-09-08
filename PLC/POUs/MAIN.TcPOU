@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="MAIN" Id="{709da0b2-f321-4915-b743-e457665273bf}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	Influx : To_InfluxDb;
+	bExecute: BOOL;
+	tTime: TIME := T#1s;
+	bBusy: BOOL;
+	bError: BOOL;
+	bErrorId: DINT;
+	stSensors : ARRAY[0..10] OF ST_SensorData;
+	Generatedata : FBGenerateData;
+	tIntervalTimer: TON;
+	sHostName: STRING;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[stSensors[0].sSensorId := '1PT01';
+Generatedata(data:=stSensors[0]);
+stSensors[1].sSensorId := '1PT02';
+Generatedata(data:=stSensors[1]);
+stSensors[2].sSensorId := '1PT03';
+Generatedata(data:=stSensors[2]);
+stSensors[3].sSensorId := '1PT04';
+Generatedata(data:=stSensors[3]);
+stSensors[4].sSensorId := '1PT05';
+Generatedata(data:=stSensors[4]);
+stSensors[5].sSensorId := '1PT06';
+Generatedata(data:=stSensors[5]);
+
+
+// Send data to InfluxDb
+Influx(
+	bExecute:= bExecute, 
+	tInterval:= tTime, 
+	sHostName:= '127.0.0.1', 
+	nHostPort:= 8086, 
+	sDatabaseName:= 'SensorData',
+	sMeasurementName:= 'PtData',
+	stData:= stSensors, 
+	bBusy=> bBusy, 
+	bError=> bError, 
+	nErrId=> bErrorId);]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="29" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="26" Count="2" />
+      <LineId Id="7" Count="5" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="13" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

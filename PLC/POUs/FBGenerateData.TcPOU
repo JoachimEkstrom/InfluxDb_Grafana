@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="FBGenerateData" Id="{42f30776-c234-4b5b-8e0e-3250c8f558c1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FBGenerateData
+VAR_IN_OUT
+	data : ST_SensorData;
+END_VAR
+
+VAR
+	rand : drand;
+	value: LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rand(Seed:=LREAL_TO_INT(value));
+value := rand.Num;
+data.rSensorValue := LREAL_TO_REAL(value);]]></ST>
+    </Implementation>
+    <LineIds Name="FBGenerateData">
+      <LineId Id="18" Count="1" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

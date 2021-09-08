@@ -1,0 +1,204 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="To_InfluxDb" Id="{353446b1-c24f-4967-9083-9bc2fc8bcbeb}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK To_InfluxDb
+
+VAR_INPUT
+	bExecute: BOOL;		// Start logging when high.
+	tInterval: TIME;	// How often to log.
+	sHostName: STRING;	// Ip-adress to Db
+	nHostPort: UINT; // Influxdb is at 8086 default 
+	sDatabaseName: STRING; // Db name
+	sMeasurementName: STRING; // "Tablename"
+	stData: ARRAY[0..10] OF ST_SensorData; // Data to be logged 
+END_VAR
+VAR_OUTPUT
+	bBusy: BOOL;
+	bError: BOOL;
+	nErrId: DINT;
+END_VAR
+VAR
+	nIndex: INT;
+	nState: INT;
+	nErrState: INT;
+	sUri: STRING;
+	sContent: STRING(32768);
+	sData: STRING(255);
+	nStartPos: UDINT;
+	nLen: UDINT;
+	
+	tIntervalTimer: TON;
+	fbIotHttpClient: FB_IotHttpClient;
+	fbIotHttpRequest: FB_IotHttpRequest;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[tIntervalTimer(IN:=bExecute AND NOT tIntervalTimer.Q, PT:=tInterval); // Timer for executing the http request.
+CASE nState OF
+0:	
+
+	IF bExecute THEN
+		bBusy:=TRUE;
+		bError:=FALSE;
+		nState:=10;
+	END_IF
+
+10:	
+
+	mInit(); // Initialize HttpClient
+
+20:
+
+	mGenerateBodyContent(); // Generate data string to be sent to InfluxDb
+	
+21:
+
+	mSendRequest(); // Execute send request
+	
+22:
+	
+	mWaitUntilDone(); // Wait until done or error
+
+99:
+
+	mErrorHandling(); // Handle the error if needed.
+	
+END_CASE
+]]></ST>
+    </Implementation>
+    <Method Name="mErrorHandling" Id="{31dd8b71-e449-49c1-bfe2-6c14fd5a78e4}">
+      <Declaration><![CDATA[METHOD PRIVATE mErrorHandling : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bError:=TRUE;
+bBusy:=FALSE;
+IF NOT bExecute THEN
+	nState:=0;
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mGenerateBodyContent" Id="{8f26b204-0b8b-4ac7-9d41-ae2ce7f25197}">
+      <Declaration><![CDATA[METHOD PRIVATE mGenerateBodyContent : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bExecute THEN
+	IF tIntervalTimer.Q THEN
+		sUri:=CONCAT('/write?db=', sDatabaseName);
+		MEMSET(ADR(sContent),0,SIZEOF(sContent)); // Memset fixed the problems with status 400 and database havoc... 
+		nStartPos:=0;
+		FOR nIndex:=0 TO 5 DO
+			IF stData[nIndex].sSensorId <> '' THEN
+				sData:=sMeasurementName; 									nLen:=INT_TO_UDINT(LEN(sData)); MEMMOVE(ADR(sContent)+nStartPos, ADR(sData), nLen); nStartPos:=nStartPos+nLen;
+				sData:=',SensorId='; 										nLen:=INT_TO_UDINT(LEN(sData)); MEMMOVE(ADR(sContent)+nStartPos, ADR(sData), nLen); nStartPos:=nStartPos+nLen;
+				sData:=stData[nIndex].sSensorId; 							nLen:=INT_TO_UDINT(LEN(sData)); MEMMOVE(ADR(sContent)+nStartPos, ADR(sData), nLen); nStartPos:=nStartPos+nLen;
+				sData:=' fSensorValue=';									nLen:=INT_TO_UDINT(LEN(sData)); MEMMOVE(ADR(sContent)+nStartPos, ADR(sData), nLen); nStartPos:=nStartPos+nLen;
+				sData:=REAL_TO_STRING(stData[nIndex].rSensorValue);			nLen:=INT_TO_UDINT(LEN(sData)); MEMMOVE(ADR(sContent)+nStartPos, ADR(sData), nLen); nStartPos:=nStartPos+nLen;
+				sData:='$n'; 												nLen:=INT_TO_UDINT(LEN(sData)); MEMMOVE(ADR(sContent)+nStartPos, ADR(sData), nLen); nStartPos:=nStartPos+nLen;
+			ELSE
+				EXIT;
+			END_IF
+		END_FOR
+		nState:=21;
+	END_IF	
+ELSE
+	bBusy:=FALSE;
+	nState:=0;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mInit" Id="{92802100-23ff-47d3-8fb7-4fae70fc282d}">
+      <Declaration><![CDATA[METHOD PRIVATE mInit : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbIotHttpClient.sHostName:=sHostName;
+fbIotHttpClient.nHostPort:=nHostPort;
+fbIotHttpClient.bKeepAlive:=TRUE;
+fbIotHttpClient.tConnectionTimeout:=T#10S;
+fbIotHttpClient.Execute();
+IF fbIotHttpClient.bConfigured THEN
+	nState:=20;
+ELSIF fbIotHttpClient.bError THEN
+	nErrState:=nState;
+	nErrId:=fbIotHttpClient.hrErrorCode;
+	nState:=99;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mSendRequest" Id="{e9679ef6-66e4-4272-b825-e8b826878320}">
+      <Declaration><![CDATA[METHOD PRIVATE mSendRequest : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+fbIotHttpClient.Execute();	
+IF fbIotHttpRequest.SendRequest(
+	sUri:=sUri,
+	fbClient:=fbIotHttpClient, 
+	eRequestType:=ETcIotHttpRequestType.HTTP_POST, 
+	pContent:=ADR(sContent), 
+	nContentSize:=LEN2(ADR(sContent)), 0)
+THEN
+	nState:=22;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mWaitUntilDone" Id="{742ace05-a870-4b79-adc2-fb94ef0b85a0}">
+      <Declaration><![CDATA[METHOD PRIVATE mWaitUntilDone : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+fbIotHttpClient.Execute();	
+IF fbIotHttpRequest.bError THEN
+	nErrState:=nState;
+	nErrId:=fbIotHttpRequest.eErrorId;
+	nState:=99;
+ELSIF NOT fbIotHttpRequest.bBusy THEN
+	nState:=20;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="To_InfluxDb">
+      <LineId Id="187" Count="0" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="263" Count="0" />
+      <LineId Id="12" Count="6" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="254" Count="0" />
+      <LineId Id="31" Count="1" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="61" Count="2" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="73" Count="2" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="84" Count="1" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="To_InfluxDb.mErrorHandling">
+      <LineId Id="6" Count="4" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="To_InfluxDb.mGenerateBodyContent">
+      <LineId Id="7" Count="2" />
+      <LineId Id="11" Count="18" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="To_InfluxDb.mInit">
+      <LineId Id="6" Count="10" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="To_InfluxDb.mSendRequest">
+      <LineId Id="6" Count="9" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="To_InfluxDb.mWaitUntilDone">
+      <LineId Id="13" Count="0" />
+      <LineId Id="6" Count="6" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

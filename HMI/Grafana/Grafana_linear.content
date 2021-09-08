@@ -1,0 +1,7 @@
+﻿<div id="Grafana_linear" data-tchmi-type="TcHmi.Controls.System.TcHmiContent" data-tchmi-top="0" data-tchmi-left="0" data-tchmi-width="1680" data-tchmi-height="800" data-tchmi-creator-viewport-width="1680" data-tchmi-creator-viewport-height="900">
+
+<div id="TcHmiIFrame" data-tchmi-type="TcHmi.Controls.Beckhoff.TcHmiIFrame" data-tchmi-height="800" data-tchmi-height-unit="px" data-tchmi-left="0" data-tchmi-left-unit="px" data-tchmi-top="0" data-tchmi-top-unit="px" data-tchmi-width="1680" data-tchmi-width-unit="px" data-tchmi-right-unit="px" data-tchmi-bottom-unit="px" data-tchmi-src="http://localhost:3000/d/bStz3mI7z/influx_grafana_linear?orgId=1&refresh=1s">
+
+</div>
+
+</div>
